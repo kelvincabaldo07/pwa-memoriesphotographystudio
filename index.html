@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#D8CDBE] dark:bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business OS</title>
+    <meta name="description" content="An all-in-one platform for documents, CRM, and scheduling with AI features.">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Theme Color for PWA -->
+    <meta name="theme-color" content="#22422A">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Montserrat & Open Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- React and ReactDOM (must be loaded before lucide-react) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Icons: Lucide -->
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/lucide-react.js"></script>
+    
+    <!-- Chart.js for Dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <script>
+        // Custom Tailwind CSS Configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Open Sans', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        'forest': '#22422A', // Dark Forest Green
+                        'clay': '#BCA89F',   // Clay
+                        'terracotta': '#E87D65', // Terracotta Red
+                        'sand': '#D8CDBE',   // Warm Sand
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Apply base fonts */
+        body { font-family: 'Open Sans', sans-serif; font-size: 14px; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Montserrat', sans-serif; }
+
+        /* Simple scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #BCA89F; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a18a7e; }
+        .dark ::-webkit-scrollbar-track { background: #1f2937; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* Prevent layout shift during icon loading */
+        [data-lucide] {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+        
+        .gemini-btn-spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Styles for the scheduler */
+        .time-slot {
+            transition: all 0.2s ease-in-out;
+        }
+        .time-slot.selected {
+            background-color: #22422A; /* Forest */
+            color: white;
+            border-color: #22422A;
+        }
+        .time-slot:disabled {
+            background-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+            border-color: #d1d5db;
+        }
+        .dark .time-slot:disabled {
+            background-color: #374151;
+            color: #6b7280;
+            border-color: #4b5563;
+        }
+        .service-group-content, .service-category-content {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.4s ease-out;
+        }
+        .service-group-content > div, .service-category-content > div {
+            overflow: hidden;
+        }
+        .service-group-content.expanded, .service-category-content.expanded {
+           grid-template-rows: 1fr;
+        }
+        
+        /* Sidebar styles for mobile */
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+                height: 100%;
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+            #sidebar-overlay {
+                display: none;
+            }
+            #sidebar.open + #sidebar-overlay {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="h-full overflow-hidden">
+    <div id="app-loading" class="fixed inset-0 bg-sand dark:bg-gray-900 flex items-center justify-center z-[100]">
+        <div class="text-center">
+            <svg class="mx-auto h-12 w-12 text-forest animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-4 text-lg font-display text-forest dark:text-gray-300">Loading Business OS...</p>
+        </div>
+    </div>
+
+    <div id="app-container" class="h-full flex bg-sand dark:bg-gray-900 text-gray-800 dark:text-gray-200" style="display: none;">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="w-64 bg-white dark:bg-gray-800 border-r border-clay dark:border-gray-700 flex flex-col p-4 transition-transform duration-300 md:translate-x-0">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-forest rounded-lg">
+                        <svg class="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.375a.75.75 0 01.75.75v3.375a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75V7.5a.75.75 0 01.75-.75zm0 9h6.375a.75.75 0 01.75.75v3.375a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v-3.375a.75.75 0 01.75-.75z" /></svg>
+                    </div>
+                    <span class="text-xl font-display font-bold text-gray-800 dark:text-white">Business OS</span>
+                </div>
+                 <button id="sidebar-close-btn" class="md:hidden text-gray-500 hover:text-gray-800">
+                    <span data-lucide="X"></span>
+                </button>
+            </div>
+            <ul id="nav-links" class="space-y-2">
+                <!-- Nav links will be injected here by JS -->
+            </ul>
+            <div id="user-id-container" class="mt-auto hidden">
+                <div class="p-2 rounded-md bg-sand dark:bg-gray-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Your User ID:</p>
+                    <p id="user-id-display" class="text-xs font-mono text-gray-600 dark:text-gray-300 break-all"></p>
+                </div>
+            </div>
+        </nav>
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"></div>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 flex flex-col overflow-y-auto">
+             <div class="p-4 md:hidden">
+                <button id="sidebar-open-btn" class="text-gray-600 dark:text-gray-300">
+                    <span data-lucide="Menu"></span>
+                </button>
+            </div>
+            <div id="view-content" class="flex-1">
+                 <!-- Content will be injected here by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal container -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden items-center justify-center p-4">
+        <div id="modal-content" class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-all opacity-0 translate-y-4">
+            <!-- Modal content will be injected here -->
+        </div>
+    </div>
+    
+    <!-- Notification container -->
+    <div id="notification-container" class="fixed bottom-5 right-5 z-[70] space-y-3">
+        <!-- Notifications will be injected here -->
+    </div>
+
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, onSnapshot, collection, addDoc, setDoc, deleteDoc, updateDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL STATE & CONFIG ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dev-business-os';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "...", authDomain: "...", projectId: "..." };
+
+        let db, auth, userId, revenueChart;
+        let isAdmin = false;
+        let currentView = 'scheduler';
+        let unsubscribeListeners = []; 
+        let bookingData = {};
+
+        const navLinksContainer = document.getElementById('nav-links');
+        const viewContent = document.getElementById('view-content');
+        const appLoading = document.getElementById('app-loading');
+        const appContainer = document.getElementById('app-container');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const userIdContainer = document.getElementById('user-id-container');
+
+        // --- VIEWS / MODULES ---
+        const views = {
+            dashboard: { name: 'Dashboard', icon: 'LayoutDashboard', render: renderDashboard, admin: true },
+            workspace: { name: 'Workspace', icon: 'FileText', render: renderWorkspace, admin: true },
+            customers: { name: 'Customers', icon: 'Users', render: renderCustomers, admin: true },
+            scheduler: { name: 'Scheduler', icon: 'CalendarDays', render: renderScheduler, admin: false },
+            appointments: { name: 'Appointments', icon: 'BookMarked', render: renderAppointments, admin: true },
+        };
+
+        // --- FIREBASE INITIALIZATION & AUTH ---
+        async function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        await initApp();
+                    } else {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                appLoading.innerHTML = `<p class="text-terracotta">Error connecting to services. Please refresh.</p>`;
+            }
+        }
+
+        // --- MAIN APP INITIALIZATION ---
+        async function initApp() {
+            const urlParams = new URLSearchParams(window.location.search);
+            isAdmin = urlParams.get('admin') === 'true';
+            
+            if (isAdmin) {
+                currentView = 'dashboard';
+                document.getElementById('sidebar').classList.remove('md:hidden');
+                document.getElementById('sidebar-open-btn').classList.remove('md:hidden');
+                userIdContainer.style.display = 'block';
+            } else {
+                document.getElementById('sidebar').classList.add('md:hidden');
+                document.getElementById('sidebar-open-btn').classList.add('md:hidden');
+            }
+
+            renderSidebar();
+            await navigate(currentView);
+            appLoading.style.display = 'none';
+            appContainer.style.display = 'flex';
+            setupSidebarToggle();
+        }
+        
+        function setupSidebarToggle() {
+            const openBtn = document.getElementById('sidebar-open-btn');
+            const closeBtn = document.getElementById('sidebar-close-btn');
+            const overlay = document.getElementById('sidebar-overlay');
+            const sidebar = document.getElementById('sidebar');
+
+            openBtn.addEventListener('click', () => sidebar.classList.add('open'));
+            closeBtn.addEventListener('click', () => sidebar.classList.remove('open'));
+            overlay.addEventListener('click', () => sidebar.classList.remove('open'));
+        }
+
+        // --- DYNAMIC ICON RENDERING ---
+        function renderLucideIcons() {
+            if (typeof lucide === 'undefined') {
+                setTimeout(renderLucideIcons, 100);
+                return;
+            }
+            const elements = document.querySelectorAll('[data-lucide]');
+            elements.forEach(el => {
+                const iconName = el.getAttribute('data-lucide');
+                if (lucide[iconName]) {
+                    const icon = React.createElement(lucide[iconName]);
+                    if (!el._reactRootContainer) {
+                        ReactDOM.createRoot(el).render(icon);
+                    }
+                }
+            });
+        }
+
+        // --- NAVIGATION ---
+        function renderSidebar() {
+            const visibleViews = Object.entries(views).filter(([key, view]) => !view.admin || isAdmin);
+            navLinksContainer.innerHTML = visibleViews.map(([key, view]) => `
+                <li>
+                    <a href="#" data-view="${key}" class="nav-link flex items-center space-x-3 p-2 rounded-md font-medium transition-colors ${currentView === key ? 'bg-sand text-forest' : 'hover:bg-sand dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'}">
+                        <span data-lucide="${view.icon}"></span>
+                        <span>${view.name}</span>
+                    </a>
+                </li>
+            `).join('');
+        }
+
+        async function navigate(viewKey) {
+            if (!views[viewKey]) return;
+            // Prevent non-admins from accessing admin views
+            if (views[viewKey].admin && !isAdmin) {
+                console.warn("Access denied to admin view.");
+                return;
+            }
+            currentView = viewKey;
+            
+            unsubscribeListeners.forEach(unsub => unsub());
+            unsubscribeListeners = [];
+            if (revenueChart) {
+                revenueChart.destroy();
+                revenueChart = null;
+            }
+
+            renderSidebar();
+            viewContent.innerHTML = `<div class="flex-1 flex items-center justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div></div>`;
+            await views[viewKey].render();
+            renderLucideIcons();
+        }
+
+        // --- UI COMPONENTS (MODAL, NOTIFICATION) ---
+        const modalContainer = document.getElementById('modal-container');
+        const modalContent = document.getElementById('modal-content');
+
+        function showModal(html, maxWidthClass = 'max-w-2xl') {
+            modalContent.className = `bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full ${maxWidthClass} transform transition-all opacity-0 translate-y-4`;
+            modalContent.innerHTML = html;
+            modalContainer.style.display = 'flex';
+            setTimeout(() => {
+                modalContent.classList.add('opacity-100', 'translate-y-0');
+                modalContent.classList.remove('opacity-0', 'translate-y-4');
+            }, 10);
+            renderLucideIcons();
+        }
+
+        function hideModal() {
+            modalContent.classList.add('opacity-0', 'translate-y-4');
+            modalContent.classList.remove('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                modalContainer.style.display = 'none';
+                modalContent.innerHTML = '';
+            }, 200);
+        }
+
+        function showConfirmationModal(message, onConfirm) {
+            showModal(`
+                <div class="p-6">
+                    <h3 class="text-lg font-display text-gray-900 dark:text-white">Are you sure?</h3>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400">${message}</p>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button id="confirm-cancel-btn" class="px-4 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium">Cancel</button>
+                        <button id="confirm-action-btn" class="px-4 py-2 rounded-md bg-terracotta text-white hover:bg-opacity-90 font-bold">Delete</button>
+                    </div>
+                </div>
+            `);
+
+            const confirmBtn = document.getElementById('confirm-action-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            const confirmHandler = () => { onConfirm(); hideModal(); cleanup(); };
+            const cancelHandler = () => { hideModal(); cleanup(); };
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', confirmHandler);
+                cancelBtn.removeEventListener('click', cancelHandler);
+            }
+
+            confirmBtn.addEventListener('click', confirmHandler);
+            cancelBtn.addEventListener('click', cancelHandler);
+        }
+        
+        function showNotification(message, type = 'success') {
+            const id = `notif-${Date.now()}`;
+            const colors = { success: 'bg-forest', error: 'bg-terracotta', info: 'bg-clay' };
+            const notification = document.createElement('div');
+            notification.id = id;
+            notification.className = `w-80 p-4 rounded-lg shadow-lg text-white ${colors[type]} transform transition-all opacity-0 translate-y-2`;
+            notification.innerHTML = `<p>${message}</p>`;
+            document.getElementById('notification-container').appendChild(notification);
+            setTimeout(() => notification.classList.remove('opacity-0', 'translate-y-2'), 10);
+            setTimeout(() => {
+                notification.classList.add('opacity-0');
+                notification.addEventListener('transitionend', () => notification.remove());
+            }, 4000);
+        }
+
+        // --- GEMINI API HELPER ---
+        async function callGemini(prompt, buttonEl) {
+            const originalContent = buttonEl.innerHTML;
+            buttonEl.disabled = true;
+            buttonEl.innerHTML = `<span class="gemini-btn-spinner" data-lucide="Loader2"></span> Generating...`;
+            renderLucideIcons();
+
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error("No content generated.");
+                }
+            } catch (error) {
+                console.error("Gemini API call failed:", error);
+                showNotification("AI feature failed. Please try again.", "error");
+                return null;
+            } finally {
+                buttonEl.disabled = false;
+                buttonEl.innerHTML = originalContent;
+                renderLucideIcons();
+            }
+        }
+
+        // --- VIEW RENDERERS ---
+
+        // 1. DASHBOARD
+        async function renderDashboard() {
+            viewContent.innerHTML = `
+                <div class="p-4 sm:p-6">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6">
+                        <h1 class="text-2xl sm:text-3xl font-display text-gray-900 dark:text-white">Dashboard</h1>
+                        <select id="period-filter" class="mt-2 sm:mt-0 rounded-md border-clay shadow-sm focus:ring-forest focus:border-forest">
+                            <option value="this_week">This Week</option>
+                            <option value="last_week">Last Week</option>
+                            <option value="this_month" selected>This Month</option>
+                            <option value="this_quarter">This Quarter</option>
+                            <option value="this_year">This Year</option>
+                        </select>
+                    </div>
+                    <div id="dashboard-stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <!-- Stat cards will be injected here -->
+                    </div>
+                    <div class="mt-6 bg-white p-4 rounded-lg shadow">
+                         <h2 class="text-xl font-display mb-4">Revenue Overview</h2>
+                         <canvas id="revenue-chart"></canvas>
+                    </div>
+                </div>
+            `;
+            document.getElementById('period-filter').addEventListener('change', updateDashboardData);
+            updateDashboardData();
+        }
+
+        function getDateRange(period) {
+            const now = new Date();
+            let start, end = new Date();
+            switch(period) {
+                case 'this_week':
+                    start = new Date(now.setDate(now.getDate() - now.getDay()));
+                    break;
+                case 'last_week':
+                    end = new Date(now.setDate(now.getDate() - now.getDay() - 1));
+                    start = new Date(now.setDate(now.getDate() - 6));
+                    break;
+                case 'this_month':
+                    start = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+                case 'this_quarter':
+                    const quarter = Math.floor(now.getMonth() / 3);
+                    start = new Date(now.getFullYear(), quarter * 3, 1);
+                    break;
+                case 'this_year':
+                    start = new Date(now.getFullYear(), 0, 1);
+                    break;
+            }
+            start.setHours(0,0,0,0);
+            end.setHours(23,59,59,999);
+            return { start, end };
+        }
+
+        async function updateDashboardData() {
+            const period = document.getElementById('period-filter').value;
+            const { start, end } = getDateRange(period);
+
+            const appointmentsQuery = query(collection(db, `artifacts/${appId}/public/data/appointments`), 
+                where("bookingTime", ">=", start.toISOString()), 
+                where("bookingTime", "<=", end.toISOString())
+            );
+            const customersQuery = query(collection(db, `artifacts/${appId}/public/data/customers`));
+
+            const [appointmentsSnapshot, customersSnapshot] = await Promise.all([getDocs(appointmentsQuery), getDocs(customersQuery)]);
+            
+            let totalMinutes = 0;
+            let serviceRevenue = 0;
+            let extrasRevenue = 0;
+            const monthlyRevenue = {};
+
+            appointmentsSnapshot.docs.forEach(doc => {
+                const data = doc.data();
+                totalMinutes += data.service.duration;
+                // Note: Prices are not stored, so revenue is a placeholder.
+                // This should be updated when pricing is added to services.
+                serviceRevenue += data.service.duration * 20; // Placeholder: Php 20/min
+                
+                if (data.extraServices) {
+                    data.extraServices.forEach(extra => {
+                        extrasRevenue += extra.price * extra.quantity;
+                    });
+                }
+                
+                const month = new Date(data.bookingTime).toLocaleString('default', { month: 'short' });
+                if (!monthlyRevenue[month]) monthlyRevenue[month] = 0;
+                monthlyRevenue[month] += (data.service.duration * 20) + (data.extraServices?.reduce((acc, s) => acc + (s.price * s.quantity), 0) || 0);
+            });
+
+            const totalRevenue = serviceRevenue + extrasRevenue;
+
+            const statsContainer = document.getElementById('dashboard-stats');
+            statsContainer.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow"><h3 class="font-display text-gray-500">Total Customers</h3><p class="text-2xl font-bold mt-1">${customersSnapshot.size}</p></div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow"><h3 class="font-display text-gray-500">Appointments</h3><p class="text-2xl font-bold mt-1">${appointmentsSnapshot.size}</p></div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow"><h3 class="font-display text-gray-500">Minutes Booked</h3><p class="text-2xl font-bold mt-1">${totalMinutes}</p></div>
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow"><h3 class="font-display text-gray-500">Total Revenue</h3><p class="text-2xl font-bold mt-1">Php ${totalRevenue.toLocaleString()}</p><p class="text-xs text-gray-400">Services: ${serviceRevenue.toLocaleString()}, Extras: ${extrasRevenue.toLocaleString()}</p></div>
+            `;
+
+            // Update chart
+            const chartCtx = document.getElementById('revenue-chart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+            revenueChart = new Chart(chartCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(monthlyRevenue),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: Object.values(monthlyRevenue),
+                        backgroundColor: '#22422A',
+                        borderColor: '#22422A',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+
+        // 2. WORKSPACE (NOTION-LIKE)
+        async function renderWorkspace() {
+             viewContent.innerHTML = `
+                <div class="p-4 sm:p-8 flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl sm:text-3xl font-display text-gray-900 dark:text-white">Workspace</h1>
+                        <button id="add-document-btn" class="bg-forest hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2">
+                            <span data-lucide="Plus"></span>
+                            <span>New Document</span>
+                        </button>
+                    </div>
+                    <div id="documents-list" class="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        <p class="text-gray-500">Loading documents...</p>
+                    </div>
+                </div>
+            `;
+            const docCollectionPath = `artifacts/${appId}/public/data/documents`;
+            const unsub = onSnapshot(collection(db, docCollectionPath), (snapshot) => {
+                const docList = document.getElementById('documents-list');
+                if (snapshot.empty) {
+                    docList.innerHTML = `<p class="text-gray-500 dark:text-gray-400 col-span-full text-center py-10">No documents yet. Create one to get started!</p>`;
+                    return;
+                }
+                docList.innerHTML = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const snippet = data.content ? data.content.substring(0, 50).replace(/<[^>]+>/g, '') + '...' : 'No content';
+                    return `
+                        <div data-doc-id="${doc.id}" class="document-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow cursor-pointer hover:shadow-lg transition-shadow">
+                            <h3 class="font-display text-lg truncate">${data.title || 'Untitled Document'}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 h-10 overflow-hidden">${snippet}</p>
+                            <div class="text-xs text-gray-400 dark:text-gray-500 mt-4">
+                                Last updated: ${data.updatedAt ? new Date(data.updatedAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            });
+            unsubscribeListeners.push(unsub);
+        }
+
+        async function openDocumentEditor(docId = null) {
+            let docData = { title: '', content: '' };
+            if (docId) {
+                const docRef = doc(db, `artifacts/${appId}/public/data/documents/${docId}`);
+                const docSnap = await getDoc(docRef);
+                if(docSnap.exists()) docData = docSnap.data();
+            }
+
+            showModal(`
+                <div class="p-6">
+                    <input id="doc-title" type="text" placeholder="Document Title" class="w-full text-2xl font-display bg-transparent focus:outline-none mb-4 dark:text-white" value="${docData.title || ''}">
+                    <textarea id="doc-content" class="w-full h-96 bg-gray-100 dark:bg-gray-700 rounded-md p-4 focus:outline-none focus:ring-2 focus:ring-forest" placeholder="Start writing your document...">${docData.content || ''}</textarea>
+                    
+                    <div id="gemini-doc-summary-output" class="mt-4 p-4 bg-sand dark:bg-indigo-900/30 rounded-lg hidden"></div>
+
+                    <div class="mt-6 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                             <button id="gemini-summarize-btn" class="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">✨ Summarize</button>
+                             <button id="gemini-continue-btn" class="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">✨ Continue Writing</button>
+                             ${docId ? `<button id="delete-doc-btn" data-doc-id="${docId}" class="ml-4 text-terracotta hover:opacity-80 font-medium">Delete</button>` : ''}
+                        </div>
+                        <div>
+                            <button onclick="window.hideModal()" class="px-4 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
+                            <button id="save-doc-btn" data-doc-id="${docId}" class="px-4 py-2 rounded-md bg-forest text-white hover:bg-opacity-90 font-bold">Save</button>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+        
+        async function saveDocument(docId) {
+            const title = document.getElementById('doc-title').value;
+            const content = document.getElementById('doc-content').value;
+            const docCollectionPath = `artifacts/${appId}/public/data/documents`;
+            
+            try {
+                if(docId) {
+                    await setDoc(doc(db, docCollectionPath, docId), { title, content, updatedAt: serverTimestamp() }, { merge: true });
+                    showNotification('Document updated successfully!');
+                } else {
+                    await addDoc(collection(db, docCollectionPath), { title, content, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+                    showNotification('Document created successfully!');
+                }
+                hideModal();
+            } catch (error) {
+                console.error("Error saving document:", error);
+                showNotification('Failed to save document.', 'error');
+            }
+        }
+        
+        async function deleteDocument(docId) {
+            showConfirmationModal("This document will be permanently deleted.", async () => {
+                try {
+                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/documents/${docId}`));
+                    showNotification('Document deleted.');
+                } catch(error) {
+                    console.error("Error deleting document:", error);
+                    showNotification('Failed to delete document.', 'error');
+                }
+            });
+        }
+
+        // 3. CUSTOMERS (CRM)
+        async function renderCustomers() {
+            viewContent.innerHTML = `
+                <div class="p-4 sm:p-8 flex flex-col h-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl sm:text-3xl font-display text-gray-900 dark:text-white">Customers</h1>
+                        <button id="add-customer-btn" class="bg-forest hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2">
+                            <span data-lucide="UserPlus"></span>
+                            <span>New Customer</span>
+                        </button>
+                    </div>
+                    <div class="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="overflow-y-auto h-full">
+                            <table class="w-full text-left">
+                                <thead class="bg-sand dark:bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th class="p-4 font-display">Name</th><th class="p-4 font-display">Email</th><th class="p-4 font-display">Phone</th><th class="p-4 font-display">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customers-table-body" class="divide-y divide-clay dark:divide-gray-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const customerCollectionPath = `artifacts/${appId}/public/data/customers`;
+            const unsub = onSnapshot(collection(db, customerCollectionPath), (snapshot) => {
+                const tableBody = document.getElementById('customers-table-body');
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500 dark:text-gray-400">No customers found.</td></tr>`;
+                    return;
+                }
+                tableBody.innerHTML = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return `
+                        <tr class="hover:bg-sand/50 dark:hover:bg-gray-700/50">
+                            <td class="p-4 font-medium">${data.name || ''}</td>
+                            <td class="p-4 text-gray-600 dark:text-gray-400">${data.email || ''}</td>
+                            <td class="p-4 text-gray-600 dark:text-gray-400">${data.phone || ''}</td>
+                            <td class="p-4">
+                                <button data-customer-id="${doc.id}" class="edit-customer-btn text-forest hover:opacity-80 font-medium">Edit</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            });
+            unsubscribeListeners.push(unsub);
+        }
+        
+        function showCustomerForm(customerId = null, customerData = {}) {
+            showModal(`
+                <form id="customer-form" class="p-6 space-y-4">
+                    <h3 class="text-xl font-display mb-4 dark:text-white">${customerId ? 'Edit Customer' : 'Add New Customer'}</h3>
+                    <input type="hidden" id="customer-id" value="${customerId || ''}">
+                    <div>
+                        <label for="customer-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+                        <input type="text" id="customer-name" value="${customerData.name || ''}" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-clay dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-forest focus:border-forest">
+                    </div>
+                    <div>
+                        <label for="customer-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
+                        <input type="email" id="customer-email" value="${customerData.email || ''}" required class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-clay dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-forest focus:border-forest">
+                    </div>
+                    <div>
+                        <label for="customer-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+                        <input type="tel" id="customer-phone" value="${customerData.phone || ''}" class="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-clay dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-forest focus:border-forest">
+                    </div>
+                    
+                    <div id="gemini-customer-insights-output" class="mt-4 p-4 bg-sand dark:bg-indigo-900/30 rounded-lg hidden"></div>
+
+                    <div class="pt-4 flex justify-between items-center">
+                        <button type="button" id="gemini-customer-insights-btn" class="text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">✨ Generate Insights</button>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="window.hideModal()" class="px-4 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
+                            <button type="submit" class="px-4 py-2 rounded-md bg-forest text-white hover:bg-opacity-90 font-bold">Save Customer</button>
+                        </div>
+                    </div>
+                </form>
+            `);
+        }
+
+        async function saveCustomer(event) {
+            event.preventDefault();
+            const id = document.getElementById('customer-id').value;
+            const data = {
+                name: document.getElementById('customer-name').value,
+                email: document.getElementById('customer-email').value,
+                phone: document.getElementById('customer-phone').value,
+            };
+            const collectionPath = `artifacts/${appId}/public/data/customers`;
+            try {
+                if (id) {
+                    await setDoc(doc(db, collectionPath, id), data, { merge: true });
+                    showNotification('Customer updated!');
+                } else {
+                    await addDoc(collection(db, collectionPath), data);
+                    showNotification('Customer added!');
+                }
+                hideModal();
+            } catch (error) {
+                console.error('Error saving customer:', error);
+                showNotification('Failed to save customer.', 'error');
+            }
+        }
+        
+        // 4. APPOINTMENTS VIEWER
+        async function renderAppointments() {
+            viewContent.innerHTML = `
+                <div class="p-4 sm:p-8 flex flex-col h-full">
+                    <h1 class="text-2xl sm:text-3xl font-display text-gray-900 dark:text-white mb-6">Appointments</h1>
+                    <div class="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="overflow-y-auto h-full">
+                            <table class="w-full text-left">
+                                <thead class="bg-sand dark:bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th class="p-4 font-display">Date & Time</th>
+                                        <th class="p-4 font-display">Customer</th>
+                                        <th class="p-4 font-display">Service</th>
+                                        <th class="p-4 font-display">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appointments-table-body" class="divide-y divide-clay dark:divide-gray-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const unsub = onSnapshot(collection(db, `artifacts/${appId}/public/data/appointments`), (snapshot) => {
+                const tableBody = document.getElementById('appointments-table-body');
+                if (snapshot.empty) {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500 dark:text-gray-400">No appointments booked yet.</td></tr>`;
+                    return;
+                }
+                tableBody.innerHTML = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const appointmentDate = new Date(data.bookingTime);
+                    return `
+                        <tr class="hover:bg-sand/50 dark:hover:bg-gray-700/50">
+                            <td class="p-4 font-medium">${appointmentDate.toLocaleString()}</td>
+                            <td class="p-4 text-gray-600 dark:text-gray-400">${data.customer.name}</td>
+                            <td class="p-4 text-gray-600 dark:text-gray-400">${data.service.name}</td>
+                            <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Confirmed</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            });
+            unsubscribeListeners.push(unsub);
+        }
+
+        // 5. SCHEDULER (New and Improved!)
+        const services = {
+            "Self-shoot": {
+                "Solo/Duo": {
+                    "Solo/Duo 15": { duration: 15, description: "A quick 15-minute session for one or two people.", photo: "https://placehold.co/600x400/a78bfa/ffffff?text=Solo/Duo+15" },
+                    "Solo/Duo 30": { duration: 30, description: "A standard 30-minute session with more time for creativity.", photo: "https://placehold.co/600x400/a78bfa/ffffff?text=Solo/Duo+30" },
+                    "Solo/Duo 60": { duration: 60, description: "An extended 60-minute session for various poses and outfits.", photo: "https://placehold.co/600x400/a78bfa/ffffff?text=Solo/Duo+60" },
+                },
+                "Small Group": {
+                    "Small Group 15": { duration: 15, description: "A fun and fast 15-minute shoot for your group of 3-5.", photo: "https://placehold.co/600x400/818cf8/ffffff?text=Small+Group+15" },
+                    "Small Group 30": { duration: 30, description: "Our most popular 30-minute group session.", photo: "https://placehold.co/600x400/818cf8/ffffff?text=Small+Group+30" },
+                    "Small Group 60": { duration: 60, description: "A full hour of fun for your group to get the perfect shots.", photo: "https://placehold.co/600x400/818cf8/ffffff?text=Small+Group+60" },
+                },
+                "Big Group": {
+                    "Big Group 30": { duration: 30, description: "A 30-minute session for large groups of 6-10 people.", photo: "https://placehold.co/600x400/60a5fa/ffffff?text=Big+Group+30" },
+                    "Big Group 60": { duration: 60, description: "An extended 60-minute session to capture everyone's best side.", photo: "https://placehold.co/600x400/60a5fa/ffffff?text=Big+Group+60" },
+                }
+            },
+            "With Photographer": {
+                 "Portraits": {
+                    "Kids Pre-birthday Shoot": { duration: 60, description: "A 60-minute guided shoot to celebrate your child.", photo: "https://placehold.co/600x400/f472b6/ffffff?text=Kids+Shoot" },
+                    "Adult Photoshoot": { duration: 60, description: "A professional 60-minute portrait session.", photo: "https://placehold.co/600x400/fb923c/ffffff?text=Adult+Shoot" },
+                    "Family Portrait": { duration: 90, description: "A 90-minute session to create lasting family memories.", photo: "https://placehold.co/600x400/34d399/ffffff?text=Family+Portrait" },
+                    "Maternity Shoot": { duration: 90, description: "A 90-minute session celebrating the journey to motherhood.", photo: "https://placehold.co/600x400/a3e635/ffffff?text=Maternity" },
+                }
+            }
+        };
+
+        const backdrops = [
+            { name: "Classic White", color: "#FFFFFF", photo: "https://placehold.co/100x100/ffffff/000000?text=White" },
+            { name: "Neutral Gray", color: "#808080", photo: "https://placehold.co/100x100/808080/ffffff?text=Gray" },
+            { name: "Bold Black", color: "#000000", photo: "https://placehold.co/100x100/000000/ffffff?text=Black" },
+            { name: "Sky Blue", color: "#87CEEB", photo: "https://placehold.co/100x100/87ceeb/ffffff?text=Blue" },
+            { name: "Forest Green", color: "#228B22", photo: "https://placehold.co/100x100/228B22/ffffff?text=Green" },
+            { name: "Rose Pink", color: "#FFC0CB", photo: "https://placehold.co/100x100/FFC0CB/ffffff?text=Pink" },
+        ];
+
+        const extraServices = [
+            { name: "4R Photo Print", price: 20 },
+            { name: "Photostrip", price: 20 },
+        ];
+        
+        const eventTypes = ["Birthday", "Anniversary", "Graduation", "Holiday", "Other"];
+
+        async function renderScheduler() {
+            viewContent.innerHTML = `
+                <div class="p-4 sm:p-8 max-w-4xl mx-auto">
+                    <h1 class="text-2xl sm:text-3xl font-display text-gray-900 dark:text-white">Book a Service</h1>
+                    <p class="mt-2 text-base text-gray-600 dark:text-gray-400">Follow the steps below to schedule your appointment.</p>
+                    <div id="scheduler-content" class="mt-8"></div>
+                </div>
+            `;
+            renderSchedulerStep(1);
+        }
+
+        function renderSchedulerStep(step, direction = 'forward') {
+            if (direction === 'forward') {
+                if (step === 2) { 
+                     bookingData.customer = {
+                        firstName: document.getElementById('fname').value,
+                        lastName: document.getElementById('lname').value,
+                        name: `${document.getElementById('fname').value} ${document.getElementById('lname').value}`,
+                        email: document.getElementById('email').value,
+                        phone: document.getElementById('phone').value,
+                    };
+                } else if (step === 4) { 
+                    bookingData.date = document.getElementById('booking-date').value;
+                }
+            }
+           
+            const container = document.getElementById('scheduler-content');
+            bookingData.step = step;
+            let html = '';
+
+            const backButton = (targetStep) => `<button data-step="${targetStep}" class="scheduler-back-btn bg-clay text-white font-bold py-2 px-6 rounded-lg">Back</button>`;
+            const nextButton = (text = 'Next') => `<button type="submit" class="bg-forest text-white font-bold py-2 px-6 rounded-lg">${text}</button>`;
+
+            if (step === 1) {
+                html = `
+                    <h2 class="text-2xl font-display mb-4">Step 1: Your Information</h2>
+                    <form id="scheduler-form" class="space-y-4">
+                        <div>
+                            <label for="fname" class="block text-base font-medium">First Name</label>
+                            <input type="text" id="fname" required class="mt-1 block w-full rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest" value="${bookingData.customer?.firstName || ''}">
+                        </div>
+                        <div>
+                            <label for="lname" class="block text-base font-medium">Last Name</label>
+                            <input type="text" id="lname" required class="mt-1 block w-full rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest" value="${bookingData.customer?.lastName || ''}">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-base font-medium">Email</label>
+                            <input type="email" id="email" required class="mt-1 block w-full rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest" value="${bookingData.customer?.email || ''}">
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-base font-medium">Phone Number</label>
+                            <input type="tel" id="phone" required class="mt-1 block w-full rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest" value="${bookingData.customer?.phone || ''}">
+                        </div>
+                        <div class="text-right pt-4">
+                            ${nextButton()}
+                        </div>
+                    </form>
+                `;
+            }
+            else if (step === 2) {
+                html = `<h2 class="text-2xl font-display mb-4">Step 2: Choose a Service</h2><div class="space-y-2">`;
+                for (const categoryName in services) {
+                    html += `
+                        <div class="border border-clay dark:border-gray-700 rounded-lg">
+                            <button class="service-category-toggle w-full p-4 text-left font-display text-xl flex justify-between items-center">
+                                ${categoryName} <span data-lucide="ChevronDown" class="transition-transform"></span>
+                            </button>
+                            <div class="service-category-content"><div>
+                    `;
+                    for (const groupName in services[categoryName]) {
+                        html += `
+                            <div class="border-t border-clay dark:border-gray-600 px-4">
+                                <button class="service-group-toggle w-full p-3 text-left font-display font-semibold text-lg flex justify-between items-center">
+                                    ${groupName} <span data-lucide="ChevronDown" class="transition-transform"></span>
+                                </button>
+                                <div class="service-group-content">
+                                    <div class="pl-4 pb-4 space-y-4">
+                        `;
+                        for (const serviceName in services[categoryName][groupName]) {
+                            const service = services[categoryName][groupName][serviceName];
+                            html += `
+                                <div class="service-card border border-clay rounded-lg p-4 cursor-pointer hover:border-forest" 
+                                     data-category="${categoryName}" 
+                                     data-group="${groupName}" 
+                                     data-service-name="${serviceName}"
+                                     data-duration="${service.duration}">
+                                    <h4 class="font-display font-bold">${serviceName} - ${service.duration} mins</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">${service.description}</p>
+                                </div>
+                            `;
+                        }
+                        html += `</div></div></div>`;
+                    }
+                    html += `</div></div></div>`;
+                }
+                html += `</div><div class="text-left pt-6">${backButton(1)}</div>`;
+            }
+            else if (step === 3) {
+                html = `
+                    <h2 class="text-2xl font-display mb-4">Step 3: Select Date & Time for ${bookingData.service.name}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label for="booking-date" class="block text-base font-medium">Date</label>
+                            <input type="date" id="booking-date" min="${new Date().toISOString().split('T')[0]}" required class="mt-1 block w-full rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest" value="${bookingData.date || ''}">
+                        </div>
+                        <div id="time-slots-container">
+                            <p class="text-gray-500">Please select a date first.</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center pt-8">
+                        ${backButton(2)}
+                        <button id="scheduler-next-btn" class="bg-forest text-white font-bold py-2 px-6 rounded-lg" ${bookingData.time ? '' : 'disabled'}>Next</button>
+                    </div>
+                `;
+            }
+            else if (step === 4) {
+                 html = `
+                    <h2 class="text-2xl font-display mb-4">Step 4: Add Extras & Consent</h2>
+                    <form id="scheduler-form" class="space-y-8">
+                        <div>
+                            <div class="flex justify-between items-center">
+                                <label class="block text-base font-medium">Backdrop Color Allocation</label>
+                                <div id="backdrop-minutes-tracker" class="text-base font-medium"></div>
+                            </div>
+                            <p class="text-sm text-gray-500">Total minutes must equal your service duration of ${bookingData.service.duration} minutes.</p>
+                            <div id="backdrop-container" class="space-y-2 mt-2">
+                                ${backdrops.map((b, i) => `
+                                    <div class="flex justify-between items-center">
+                                        <label for="backdrop-mins-${i}" class="flex items-center gap-2 text-base">
+                                            <span class="w-5 h-5 rounded-full border" style="background-color: ${b.color};"></span>
+                                            ${b.name}
+                                        </label>
+                                        <input type="number" id="backdrop-mins-${i}" data-name="${b.name}" min="0" value="${bookingData.backdrops?.[b.name] || 0}" class="backdrop-input w-24 rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest" placeholder="mins">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-base font-medium">Can we post your photos on social media?</label>
+                            <div class="flex items-center gap-4 mt-2">
+                                <label class="text-base"><input type="radio" name="social-consent" value="yes" class="mr-1 text-forest focus:ring-forest" ${bookingData.socialConsent === 'yes' ? 'checked' : ''}> Yes</label>
+                                <label class="text-base"><input type="radio" name="social-consent" value="no" class="mr-1 text-forest focus:ring-forest" ${bookingData.socialConsent !== 'yes' ? 'checked' : ''}> No</label>
+                            </div>
+                            <div id="social-details-container" class="mt-4 space-y-4 pl-4 border-l-2 border-clay ${bookingData.socialConsent === 'yes' ? '' : 'hidden'}">
+                                <div>
+                                    <label for="event-milestone" class="block text-base font-medium">Event or Milestone</label>
+                                    <select id="event-milestone" class="mt-1 block w-full rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-forest focus:border-forest">
+                                        ${eventTypes.map(e => `<option value="${e}" ${bookingData.eventMilestone?.type === e ? 'selected' : ''}>${e}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div id="birthday-details" class="space-y-2 ${bookingData.eventMilestone?.type === 'Birthday' ? '' : 'hidden'}">
+                                     <label for="birthday-name" class="block text-base font-medium">Celebrant's Name</label>
+                                     <input type="text" id="birthday-name" class="mt-1 block w-full rounded-md border-clay" value="${bookingData.eventMilestone?.name || ''}">
+                                     <label for="birthday-post-date" class="block text-base font-medium">When to post?</label>
+                                     <input type="date" id="birthday-post-date" class="mt-1 block w-full rounded-md border-clay" value="${bookingData.eventMilestone?.postDate || ''}">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                             <label class="block text-base font-medium">Extra Services</label>
+                             <div class="space-y-2 mt-2">
+                                ${extraServices.map((s, i) => `
+                                    <div class="flex justify-between items-center">
+                                        <label for="extra-${i}" class="text-base">${s.name} (Php${s.price})</label>
+                                        <input type="number" id="extra-${i}" data-name="${s.name}" data-price="${s.price}" min="0" value="${bookingData.extraServices?.find(es => es.name === s.name)?.quantity || 0}" class="w-20 rounded-md border-clay shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                                    </div>
+                                `).join('')}
+                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-base font-medium">Studio Policies</label>
+                            <div class="mt-4 space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="terms-agreed" disabled class="mr-2 h-4 w-4 rounded border-clay text-forest focus:ring-forest" ${bookingData.termsAgreed ? 'checked' : ''}>
+                                    <span id="terms-agreed-label" class="cursor-pointer underline text-base">I agree to the booking terms and conditions.</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="privacy-agreed" class="mr-2 h-4 w-4 rounded border-clay text-forest focus:ring-forest" ${bookingData.privacyAgreed ? 'checked' : ''}>
+                                    <span class="text-base">I agree to the privacy policy.</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-6">
+                            ${backButton(3)}
+                            <button id="scheduler-review-btn" class="bg-terracotta text-white font-bold py-2 px-6 rounded-lg">Review Booking</button>
+                        </div>
+                    </form>
+                `;
+            }
+
+            container.innerHTML = html;
+            renderLucideIcons();
+
+            if (step === 2) {
+                document.querySelectorAll('.service-category-toggle, .service-group-toggle').forEach(btn => btn.addEventListener('click', toggleAccordion));
+            }
+            if (step === 3) {
+                document.getElementById('booking-date').addEventListener('change', generateTimeSlots);
+                if (bookingData.date) generateTimeSlots();
+            }
+            if (step === 4) {
+                document.querySelectorAll('.backdrop-input').forEach(input => input.addEventListener('input', handleBackdropInput));
+                handleBackdropInput();
+                document.querySelectorAll('input[name="social-consent"]').forEach(radio => radio.addEventListener('change', handleSocialConsentChange));
+                document.getElementById('event-milestone').addEventListener('change', handleEventMilestoneChange);
+                document.getElementById('terms-agreed-label').addEventListener('click', showTermsModal);
+            }
+        }
+        
+        function toggleAccordion(event) {
+            const button = event.currentTarget;
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('[data-lucide]');
+            content.classList.toggle('expanded');
+            icon.style.transform = content.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        async function generateTimeSlots() {
+            const dateInput = document.getElementById('booking-date');
+            const container = document.getElementById('time-slots-container');
+            const nextBtn = document.getElementById('scheduler-next-btn');
+            
+            container.innerHTML = `<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-forest"></div>`;
+
+            const selectedDateStr = dateInput.value;
+            if (!selectedDateStr) {
+                container.innerHTML = `<p class="text-gray-500">Please select a valid date.</p>`;
+                return;
+            }
+
+            const serviceDuration = bookingData.service.duration;
+            const bufferDuration = 30;
+            const totalSlotDuration = serviceDuration + bufferDuration;
+
+            const startOfDay = new Date(`${selectedDateStr}T00:00:00`);
+            const endOfDay = new Date(`${selectedDateStr}T23:59:59`);
+            const q = query(collection(db, `artifacts/${appId}/public/data/appointments`), 
+                where("bookingTime", ">=", startOfDay.toISOString()), 
+                where("bookingTime", "<=", endOfDay.toISOString())
+            );
+            const querySnapshot = await getDocs(q);
+            const existingBookings = querySnapshot.docs.map(d => {
+                const data = d.data();
+                return {
+                    start: new Date(data.bookingTime),
+                    end: new Date(new Date(data.bookingTime).getTime() + (data.service.duration + bufferDuration) * 60000)
+                };
+            });
+
+            const dayOfWeek = startOfDay.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isWithPhotographer = bookingData.service.category === 'With Photographer';
+            let dayStartHour = 8;
+            let dayEndHour = 20;
+            if (!isWeekend && isWithPhotographer) dayStartHour = 16;
+            
+            let slotsHtml = `<h3 class="font-medium mb-2">Available Slots:</h3><div class="grid grid-cols-3 sm:grid-cols-4 gap-2">`;
+            let availableSlots = 0;
+
+            for (let hour = dayStartHour; hour < dayEndHour; hour++) {
+                for (let minute = 0; minute < 60; minute += 15) {
+                    const slotStart = new Date(`${selectedDateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`);
+                    const slotEnd = new Date(slotStart.getTime() + totalSlotDuration * 60000);
+                    
+                    if (slotEnd.getHours() > dayEndHour || (slotEnd.getHours() === dayEndHour && slotEnd.getMinutes() > 0)) continue;
+
+                    let isBooked = false;
+                    for (const booking of existingBookings) {
+                        if (slotStart < booking.end && slotEnd > booking.start) {
+                            isBooked = true;
+                            break;
+                        }
+                    }
+                    
+                    const timeString = slotStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    const isSelected = bookingData.time === `${hour}:${minute}`;
+                    
+                    slotsHtml += `
+                        <button class="time-slot border border-clay rounded-md p-2 text-sm ${isSelected ? 'selected' : ''}" 
+                                data-hour="${hour}" 
+                                data-minute="${minute}" 
+                                ${isBooked ? 'disabled' : ''}>
+                            ${timeString}
+                        </button>
+                    `;
+                    if (!isBooked) availableSlots++;
+                }
+            }
+            slotsHtml += `</div>`;
+            
+            if (availableSlots === 0) {
+                 container.innerHTML = `<p class="text-gray-500">No available slots for this day. Please try another date.</p>`;
+            } else {
+                container.innerHTML = slotsHtml;
+            }
+
+            document.querySelectorAll('.time-slot:not(:disabled)').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                    slot.classList.add('selected');
+                    bookingData.time = `${slot.dataset.hour}:${slot.dataset.minute}`;
+                    nextBtn.disabled = false;
+                });
+            });
+        }
+        
+        function handleBackdropInput(event) {
+            const serviceDuration = bookingData.service.duration;
+            const inputs = document.querySelectorAll('.backdrop-input');
+            let totalMinutes = 0;
+            
+            inputs.forEach(input => {
+                totalMinutes += parseInt(input.value, 10) || 0;
+            });
+
+            if (totalMinutes > serviceDuration) {
+                const overflow = totalMinutes - serviceDuration;
+                event.target.value = Math.max(0, (parseInt(event.target.value, 10) || 0) - overflow);
+                showNotification(`Time allocation cannot exceed ${serviceDuration} minutes.`, 'error');
+            }
+            
+            // Recalculate total for display
+            totalMinutes = 0;
+            inputs.forEach(input => {
+                totalMinutes += parseInt(input.value, 10) || 0;
+            });
+
+            const tracker = document.getElementById('backdrop-minutes-tracker');
+            tracker.textContent = `${totalMinutes} / ${serviceDuration} mins`;
+            tracker.className = totalMinutes === serviceDuration ? 'text-base font-medium text-green-600' : 'text-base font-medium text-terracotta';
+        }
+
+        function handleSocialConsentChange(event) {
+            const container = document.getElementById('social-details-container');
+            container.classList.toggle('hidden', event.target.value !== 'yes');
+        }
+
+        function handleEventMilestoneChange(event) {
+            const container = document.getElementById('birthday-details');
+            container.classList.toggle('hidden', event.target.value !== 'Birthday');
+        }
+
+        function showTermsModal() {
+            showModal(`
+                <div class="p-6">
+                    <h3 class="text-2xl font-display mb-4">Booking Terms & Conditions</h3>
+                    <div id="terms-content" class="h-64 overflow-y-auto border border-clay p-4 rounded-md dark:border-gray-600">
+                        <p class="mb-2"><strong>1. Booking and Payment:</strong> All bookings must be confirmed with full payment upon scheduling. We do not accept reservations without payment.</p>
+                        <p class="mb-2"><strong>2. Cancellations:</strong> Cancellations made at least 48 hours before the scheduled time will receive a full refund. Cancellations within 48 hours are non-refundable.</p>
+                        <p class="mb-2"><strong>3. Rescheduling:</strong> You may reschedule your appointment once, provided you notify us at least 24 hours in advance. A rescheduling fee may apply.</p>
+                        <p class="mb-2"><strong>4. Late Arrivals:</strong> Your session starts at the scheduled time. If you are late, the session time will not be extended. Arriving more than 30 minutes late will be considered a no-show, and the booking will be forfeited without a refund.</p>
+                        <p class="mb-2"><strong>5. Studio Capacity:</strong> Please adhere to the maximum number of people allowed for your selected service. Additional persons will be subject to extra charges.</p>
+                        <p><strong>6. Damages:</strong> You are responsible for any damages to studio equipment or property caused by you or your group. A fee will be charged for any repairs or replacements needed.</p>
+                    </div>
+                    <div class="text-right mt-6">
+                        <button id="terms-modal-agree-btn" class="bg-forest text-white font-bold py-2 px-6 rounded-lg" disabled>I Understand and Agree</button>
+                    </div>
+                </div>
+            `, 'max-w-lg');
+
+            const termsContent = document.getElementById('terms-content');
+            const agreeBtn = document.getElementById('terms-modal-agree-btn');
+            
+            termsContent.addEventListener('scroll', () => {
+                if (termsContent.scrollTop + termsContent.clientHeight >= termsContent.scrollHeight - 10) {
+                    agreeBtn.disabled = false;
+                }
+            });
+
+            agreeBtn.addEventListener('click', () => {
+                const termsCheckbox = document.getElementById('terms-agreed');
+                termsCheckbox.checked = true;
+                termsCheckbox.disabled = false; // Enable it so the form can read its value
+                hideModal();
+            });
+        }
+        
+        function handleReviewBooking() {
+             // Final validation before showing summary
+            let totalBackdropMinutes = 0;
+            document.querySelectorAll('.backdrop-input').forEach(input => {
+                totalBackdropMinutes += parseInt(input.value, 10) || 0;
+            });
+            if (totalBackdropMinutes !== bookingData.service.duration) {
+                showNotification(`Backdrop minutes (${totalBackdropMinutes}) must exactly match service duration (${bookingData.service.duration}).`, "error");
+                return;
+            }
+            if (!document.getElementById('terms-agreed').checked || !document.getElementById('privacy-agreed').checked) {
+                showNotification("You must agree to the terms and privacy policy.", "error");
+                return;
+            }
+
+            // Gather final data from Step 4 into bookingData
+            bookingData.backdrops = {};
+            document.querySelectorAll('.backdrop-input').forEach(input => {
+                const minutes = parseInt(input.value, 10);
+                if (minutes > 0) {
+                    bookingData.backdrops[input.dataset.name] = minutes;
+                }
+            });
+            bookingData.socialConsent = document.querySelector('input[name="social-consent"]:checked').value;
+            if (bookingData.socialConsent === 'yes') {
+                const eventType = document.getElementById('event-milestone').value;
+                bookingData.eventMilestone = { type: eventType };
+                if (eventType === 'Birthday') {
+                    bookingData.eventMilestone.name = document.getElementById('birthday-name').value;
+                    bookingData.eventMilestone.postDate = document.getElementById('birthday-post-date').value;
+                }
+            } else {
+                 bookingData.eventMilestone = null;
+            }
+            bookingData.extraServices = [];
+            extraServices.forEach((s, i) => {
+                const quantity = parseInt(document.getElementById(`extra-${i}`).value, 10);
+                if (quantity > 0) {
+                    bookingData.extraServices.push({ name: s.name, price: s.price, quantity });
+                }
+            });
+            bookingData.termsAgreed = document.getElementById('terms-agreed').checked;
+            bookingData.privacyAgreed = document.getElementById('privacy-agreed').checked;
+            
+            showBookingSummary();
+        }
+
+        function showBookingSummary() {
+            const [hour, minute] = bookingData.time.split(':');
+            const bookingDate = new Date(bookingData.date);
+            bookingDate.setHours(hour, minute, 0, 0);
+
+            let summaryHtml = `
+                <div class="p-6">
+                    <h3 class="text-2xl font-display mb-4">Booking Summary</h3>
+                    <div class="space-y-3 text-base">
+                        <p><strong>Customer:</strong> ${bookingData.customer.name}</p>
+                        <p><strong>Service:</strong> ${bookingData.service.name} (${bookingData.service.duration} mins)</p>
+                        <p><strong>Date & Time:</strong> ${bookingDate.toLocaleString([], {dateStyle: 'full', timeStyle: 'short'})}</p>
+                        <div><strong>Backdrops:</strong>
+                           <ul class="list-disc pl-5">
+                             ${Object.entries(bookingData.backdrops).map(([name, mins]) => `<li>${name}: ${mins} mins</li>`).join('')}
+                           </ul>
+                        </div>
+                        ${bookingData.socialConsent === 'yes' ? `<p><strong>Social Media Post:</strong> Yes</p>` : ''}
+                        ${bookingData.eventMilestone ? `<p><strong>Event:</strong> ${bookingData.eventMilestone.type}</p>` : ''}
+                        ${bookingData.eventMilestone?.name ? `<p><strong>Celebrant:</strong> ${bookingData.eventMilestone.name}</p>` : ''}
+                    </div>
+                     <div class="mt-6 flex justify-between items-center">
+                        <button onclick="window.hideModal()" class="px-4 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium">Go Back & Edit</button>
+                        <button id="final-book-btn" class="px-6 py-2 rounded-md bg-terracotta text-white hover:bg-opacity-90 font-bold">Confirm & Book</button>
+                    </div>
+                </div>
+            `;
+            showModal(summaryHtml, 'max-w-lg');
+
+            document.getElementById('final-book-btn').addEventListener('click', saveBookingToFirestore);
+        }
+
+        async function saveBookingToFirestore() {
+            const [hour, minute] = bookingData.time.split(':');
+            const bookingDate = new Date(bookingData.date);
+            bookingDate.setHours(hour, minute, 0, 0);
+            bookingData.bookingTime = bookingDate.toISOString();
+
+            try {
+                await addDoc(collection(db, `artifacts/${appId}/public/data/appointments`), bookingData);
+                
+                const customerQuery = query(collection(db, `artifacts/${appId}/public/data/customers`), where("email", "==", bookingData.customer.email));
+                const existingCustomer = await getDocs(customerQuery);
+                if (existingCustomer.empty) {
+                    await addDoc(collection(db, `artifacts/${appId}/public/data/customers`), bookingData.customer);
+                } else {
+                    await setDoc(doc(db, `artifacts/${appId}/public/data/customers`, existingCustomer.docs[0].id), bookingData.customer, { merge: true });
+                }
+                
+                hideModal();
+                showNotification("Booking confirmed! An email has been sent.", "success");
+                bookingData = {}; // Reset for next booking
+                navigate('appointments');
+
+            } catch (error) {
+                console.error("Error confirming booking:", error);
+                showNotification("Could not confirm booking. Please try again.", "error");
+            }
+        }
+        
+        // --- GLOBAL EVENT LISTENERS ---
+        document.addEventListener('click', async (e) => {
+            const navLink = e.target.closest('.nav-link');
+            if (navLink) { 
+                e.preventDefault(); 
+                document.getElementById('sidebar').classList.remove('open');
+                navigate(navLink.dataset.view); 
+            }
+            
+            if (e.target.closest('#add-document-btn')) { openDocumentEditor(); }
+            const docCard = e.target.closest('.document-card');
+            if(docCard) { openDocumentEditor(docCard.dataset.docId); }
+            if(e.target.closest('#save-doc-btn')) { saveDocument(e.target.closest('#save-doc-btn').dataset.docId); }
+            if(e.target.closest('#delete-doc-btn')) { deleteDocument(e.target.closest('#delete-doc-btn').dataset.docId); }
+
+            if (e.target.closest('#add-customer-btn')) { showCustomerForm(); }
+            const editCustomerBtn = e.target.closest('.edit-customer-btn');
+            if (editCustomerBtn) {
+                const customerId = editCustomerBtn.dataset.customerId;
+                const customerRef = doc(db, `artifacts/${appId}/public/data/customers`, customerId);
+                const customerSnap = await getDoc(customerRef);
+                if (customerSnap.exists()) { showCustomerForm(customerId, customerSnap.data()); }
+            }
+
+            // Scheduler actions
+            const serviceCard = e.target.closest('.service-card');
+            if (serviceCard) {
+                bookingData.service = {
+                    category: serviceCard.dataset.category,
+                    group: serviceCard.dataset.group,
+                    name: serviceCard.dataset.serviceName,
+                    duration: parseInt(serviceCard.dataset.duration, 10)
+                };
+                renderSchedulerStep(3, 'forward');
+            }
+            if (e.target.id === 'scheduler-next-btn') {
+                renderSchedulerStep(4, 'forward');
+            }
+            if (e.target.id === 'scheduler-review-btn') {
+                e.preventDefault();
+                handleReviewBooking();
+            }
+            const backBtn = e.target.closest('.scheduler-back-btn');
+            if (backBtn) {
+                renderSchedulerStep(parseInt(backBtn.dataset.step, 10), 'backward');
+            }
+
+            // Gemini Actions
+            const summarizeBtn = e.target.closest('#gemini-summarize-btn');
+            if (summarizeBtn) {
+                const content = document.getElementById('doc-content').value;
+                if (!content.trim()) { showNotification("Cannot summarize empty document.", "info"); return; }
+                const prompt = `Summarize the following text in a few key bullet points:\n\n${content}`;
+                const summary = await callGemini(prompt, summarizeBtn);
+                if (summary) {
+                    const outputDiv = document.getElementById('gemini-doc-summary-output');
+                    outputDiv.innerHTML = summary.replace(/\n/g, '<br>');
+                    outputDiv.style.display = 'block';
+                }
+            }
+
+            const continueBtn = e.target.closest('#gemini-continue-btn');
+            if (continueBtn) {
+                const contentEl = document.getElementById('doc-content');
+                if (!contentEl.value.trim()) { showNotification("Cannot continue an empty document.", "info"); return; }
+                const prompt = `Continue writing the following text:\n\n${contentEl.value}`;
+                const continuation = await callGemini(prompt, continueBtn);
+                if (continuation) {
+                    contentEl.value += `\n\n${continuation}`;
+                }
+            }
+
+            const insightsBtn = e.target.closest('#gemini-customer-insights-btn');
+            if (insightsBtn) {
+                const name = document.getElementById('customer-name').value;
+                const email = document.getElementById('customer-email').value;
+                if (!name.trim()) { showNotification("Customer name is needed for insights.", "info"); return; }
+                const prompt = `Based on a customer named "${name}" with email "${email}", generate a brief, one-paragraph fictional customer persona and suggest 2-3 communication tips for them.`;
+                const insights = await callGemini(prompt, insightsBtn);
+                if (insights) {
+                    const outputDiv = document.getElementById('gemini-customer-insights-output');
+                    outputDiv.innerHTML = insights.replace(/\n/g, '<br>');
+                    outputDiv.style.display = 'block';
+                }
+            }
+            
+            if (e.target === modalContainer) { hideModal(); }
+        });
+
+        document.addEventListener('submit', (e) => {
+            if (e.target.id === 'customer-form') { 
+                e.preventDefault();
+                saveCustomer(e); 
+            }
+            if (e.target.id === 'scheduler-form') { 
+                e.preventDefault();
+                if (bookingData.step === 1) {
+                    renderSchedulerStep(2, 'forward');
+                }
+            }
+        });
+        
+        // --- PWA Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+
+        window.hideModal = hideModal;
+
+        initializeFirebase();
+    </script>
+</body>
+</html>
